@@ -13,73 +13,93 @@ const service = axios.create({
 // request interceptor
 service.interceptors.request.use(
   config => {
-    // do something before request is sent
-
-    if (store.getters.token) {
-      // let each request carry token
-      // ['X-Token'] is a custom headers key
-      // please modify it according to the actual situation
-      config.headers['X-Token'] = getToken()
-    }
-    return config
-  },
-  error => {
-    // do something with request error
-    console.log(error) // for debug
-    return Promise.reject(error)
-  }
-)
+		// 每次发送请求之前判断是否存在token，如果存在，则统一在http请求的header都加上token，不用每次请求都手动添加了
+		// 即使本地存在token，也有可能token是过期的，所以在响应拦截器中要对返回状态进行判断
+		const token = localStorage.getItem('token');
+		token && (config.headers.Authorization = "Bearer " + token);
+		const userName = localStorage.getItem('userName');
+		config.headers['UserName'] = userName;
+		return config;
+	},
+	error => {
+		return Promise.error(error);
+  })
 
 // response interceptor
 service.interceptors.response.use(
-  /**
-   * If you want to get http information such as headers or status
-   * Please return  response => response
-  */
-
-  /**
-   * Determine the request status by custom code
-   * Here is just an example
-   * You can also judge the status by HTTP Status Code
-   */
-  response => {
-    const res = response.data
-
-    // if the custom code is not 20000, it is judged as an error.
-    if (res.code !== 20000) {
-      Message({
-        message: res.message || 'Error',
-        type: 'error',
-        duration: 5 * 1000
-      })
-
-      // 50008: Illegal token; 50012: Other clients logged in; 50014: Token expired;
-      if (res.code === 50008 || res.code === 50012 || res.code === 50014) {
-        // to re-login
-        MessageBox.confirm('You have been logged out, you can cancel to stay on this page, or log in again', 'Confirm logout', {
-          confirmButtonText: 'Re-Login',
-          cancelButtonText: 'Cancel',
-          type: 'warning'
-        }).then(() => {
-          store.dispatch('user/resetToken').then(() => {
-            location.reload()
-          })
-        })
-      }
-      return Promise.reject(new Error(res.message || 'Error'))
-    } else {
-      return res
-    }
-  },
-  error => {
-    console.log('err' + error) // for debug
-    Message({
-      message: error.message,
-      type: 'error',
-      duration: 5 * 1000
-    })
-    return Promise.reject(error)
-  }
-)
+  // response => {
+	// 	if (response.status === 200) {
+	// 		if(response.data.status=="1")				
+	// 		{
+	// 			if(count===0)					
+	// 			{
+	// 				// alert("系统内部有错误，请联系管理员！");
+	// 				count++;
+	// 			}
+	// 		}
+	// 		return Promise.resolve(response);
+	// 	} else {
+	// 		return Promise.reject(response);
+	// 	}
+	// },
+	// // 服务器状态码不是200的情况    
+	// error => {
+	// 	if (error.response.status) {
+	// 		switch (error.response.status) {
+	// 			// 401: 未登录                
+	// 			// 未登录则跳转登录页面，并携带当前页面的路径                
+	// 			// 在登录成功后返回当前页面，这一步需要在登录页操作。                
+	// 			case 401:
+	// 				if (router.currentRoute.path != '/login') {
+	// 					router.replace({
+	// 						path: '/login',
+	// 					})
+	// 				}
+	// 				break;
+	// 				// 403 token过期                
+	// 				// 登录过期对用户进行提示                
+	// 				// 清除本地token和清空vuex中token对象                
+	// 				// 跳转登录页面                
+	// 			case 403:
+	// 				Toast({
+	// 					message: '登录过期，请重新登录',
+	// 					duration: 1000,
+	// 					forbidClick: true
+	// 				});
+	// 				// 清除token                    
+	// 				localStorage.removeItem('token');
+	// 				store.commit('loginSuccess', null);
+	// 				// 跳转登录页面，并将要浏览的页面fullPath传过去，登录成功后跳转需要访问的页面
+	// 				setTimeout(() => {
+	// 					router.replace({
+	// 						path: '/login',
+	// 						query: {
+	// 							redirect: router.currentRoute.fullPath
+	// 						}
+	// 					});
+	// 				}, 1000);
+	// 				break;
+	// 				// 404请求不存在                
+	// 			case 404:
+	// 				Toast({
+	// 					message: '网络请求不存在',
+	// 					duration: 1500,
+	// 					forbidClick: true
+	// 				});
+	// 				break;
+	// 				// 其他错误，直接抛出错误提示                
+	// 			default:
+	// 				Toast({
+	// 					message: error.response.data.message,
+	// 					duration: 1500,
+	// 					forbidClick: true
+	// 				});
+	// 		}			
+	// 		return Promise.reject(error.response);
+	// 	}
+  // 	}
+	response => {return response},
+	error =>{return error}
+	)
 
 export default service
